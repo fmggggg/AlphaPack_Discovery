@@ -5,7 +5,6 @@ __pycache__/
 
 # C extensions
 *.json
-*.txt
 *.so
 *.csv
 *.pt
