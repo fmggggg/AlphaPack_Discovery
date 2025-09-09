@@ -52,9 +52,59 @@ export default function Home() {
         onCollapse={(v) => setCollapsed(v)}
         width={320}
         collapsedWidth={screens.md ? 56 : 0}
-        style={{ background: "#fff", borderRight: "1px solid #f0f0f0", overflow: "hidden" }}
+        style={{
+          background: "#fff",
+          borderRight: "1px solid #f0f0f0",
+          overflow: "hidden",
+          display: "flex",
+          flexDirection: "column",
+        }}
         theme="light"
       >
+      {/* Brand bar */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 12,
+          padding: "10px 12px",
+          height: 60,
+          borderBottom: "1px solid #f0f0f0",
+        }}
+      >
+        {/* left: logo */}
+        <img
+          src="/alphapack.png"
+          alt="AlphaPack logo"
+          width={40}
+          height={40}
+          style={{ borderRadius: 8, flexShrink: 0, objectFit: "contain" }}
+        />
+
+        {/* center: title */}
+        {!collapsed && (
+          <div
+            style={{
+              flex: 1,
+              textAlign: "center",
+              fontWeight: 600,
+              fontSize: 20,
+              lineHeight: "40px", // 与 logo 视觉对齐
+              whiteSpace: "nowrap",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+            }}
+            title="AlphaPack Discovery"
+          >
+            AlphaPack Discovery
+          </div>
+        )}
+
+        {/* right: spacer with same width as logo */}
+        {!collapsed && <div style={{ width: 30, flexShrink: 0 }} />}
+      </div>
+
+        {/* Controls bar */}
         <div
           style={{
             display: "flex",
@@ -89,7 +139,6 @@ export default function Home() {
               </Button>
             </Space>
           ) : (
-            // Collapsed: show icon-only buttons
             <Space>
               <Button type="text" icon={<UploadOutlined />} onClick={() => setUploadOpen(true)} />
               <Button
@@ -103,14 +152,15 @@ export default function Home() {
           )}
         </div>
 
-        <div style={{ height: "calc(100% - 49px)", overflow: "auto", padding: 8 }}>
+        {/* Dataset list */}
+        <div style={{ flex: 1, minHeight: 0, overflow: "auto", padding: 8 }}>
           <DatasetSidebar
             items={datasets}
             selected={selected}
             onSelect={(id) => {
               setSelected(id);
-              setView("landscape");                 // ← 切回 landscape 视图
-              setTimeout(() => window.dispatchEvent(new Event("resize")), 0); // 可选：让 Plotly 立即自适应
+              setView("landscape"); // 点击列表时切回 Landscape
+              setTimeout(() => window.dispatchEvent(new Event("resize")), 0);
             }}
             onReload={loadDatasets}
             collapsed={collapsed}
@@ -137,7 +187,6 @@ export default function Home() {
               </div>
             )
           ) : (
-            // Leaderboard view 
             <LeaderboardTable />
           )}
         </div>

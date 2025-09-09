@@ -12,7 +12,6 @@ __pycache__/
 *.cif
 *.zip
 *.xyz
-*.png
 *.pkl
 *.model
 lightning_logs/
