@@ -1,55 +1,78 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import React, { useMemo } from "react";
+import React, { useEffect, useMemo, useRef } from "react";
 import type { Layout, Config, Data } from "plotly.js";
 
 const Plot = dynamic(() => import("react-plotly.js"), { ssr: false });
 
 export type ScatterPoint = {
   id: string;
-  name: string;
-  x: number;
-  y: number;
-  label?: string;
+  name: string;   // structure name
+  x: number;      // density
+  y: number;      // energy
+  formula?: string;
 };
 
 export default React.memo(function PlotlyScatter({
   title,
   points,
+  selectedName,
   onPointClick,
 }: {
   title?: string;
   points: ScatterPoint[];
+  selectedName?: string | null;
   onPointClick?: (p: ScatterPoint) => void;
 }) {
-  const { xs, ys, text, customdata } = useMemo(() => {
-    const xs: number[] = new Array(points.length);
-    const ys: number[] = new Array(points.length);
-    const text: string[] = new Array(points.length);
-    const customdata: any[] = new Array(points.length);
-    for (let i = 0; i < points.length; i++) {
-      const p = points[i];
-      xs[i] = p.x;
-      ys[i] = p.y;
-      text[i] = p.label ?? p.name ?? p.id;
-      customdata[i] = { id: p.id, name: p.name };
-    }
-    return { xs, ys, text, customdata };
-  }, [points]);
+  // --- ResizeObserver: fire a window 'resize' when container size changes
+  const wrapRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!wrapRef.current) return;
+    const ro = new ResizeObserver(() => {
+      // react-plotly listens to window resize; fake one to trigger relayout
+      window.dispatchEvent(new Event("resize"));
+    });
+    ro.observe(wrapRef.current);
+    return () => ro.disconnect();
+  }, []);
 
-  const data = useMemo<Data[]>(() => [
-    {
+  const { bulk, sel } = useMemo(() => {
+    const idx = selectedName ? points.findIndex(p => p.name === selectedName) : -1;
+    if (idx >= 0) {
+      const sel = points[idx];
+      const bulk = points.filter((_, i) => i !== idx);
+      return { bulk, sel };
+    }
+    return { bulk: points, sel: undefined as ScatterPoint | undefined };
+  }, [points, selectedName]);
+
+  const bulkData: Data = useMemo(() => ({
+    type: "scattergl",
+    mode: "markers",
+    x: bulk.map(p => p.x),
+    y: bulk.map(p => p.y),
+    text: bulk.map(p => p.name),
+    customdata: bulk.map(p => ({ id: p.id, name: p.name, formula: p.formula })),
+    hovertemplate: "%{text}<br>ρ=%{x:.3f} g/cm³<br>E=%{y:.3f}<extra></extra>",
+    marker: { size: 6, opacity: 0.85 },
+  }), [bulk]);
+
+  const selData: Data | null = useMemo(() => {
+    if (!sel) return null;
+    return {
       type: "scattergl",
       mode: "markers",
-      x: xs,
-      y: ys,
-      text,
-      customdata,
-      hovertemplate: "%{text}<br>ρ=%{x:.3f} g/cm³<br>E=%{y:.3f}<extra></extra>",
-      marker: { size: 6, opacity: 0.85 },
-    } as Data,
-  ], [xs, ys, text, customdata]);
+      x: [sel.x],
+      y: [sel.y],
+      text: [sel.name],
+      customdata: [{ id: sel.id, name: sel.name, formula: sel.formula }],
+      hovertemplate: "<b>%{text}</b><br>ρ=%{x:.3f} g/cm³<br>E=%{y:.3f}<extra></extra>",
+      marker: { size: 11, opacity: 1, color: "#ff4d4f", line: { width: 1, color: "#7f1f1f" } },
+    } as Data;
+  }, [sel]);
+
+  const data = selData ? [bulkData, selData] : [bulkData];
 
   const layout = useMemo<Partial<Layout>>(() => ({
     title: { text: title ?? "", x: 0, xanchor: "left", font: { size: 16 } },
@@ -59,7 +82,7 @@ export default React.memo(function PlotlyScatter({
     hovermode: "closest",
     showlegend: false,
     uirevision: "keep",
-    autosize: true, // 关键：随容器尺寸自动调整
+    autosize: true,
   }), [title]);
 
   const config = useMemo<Partial<Config>>(() => ({
@@ -69,22 +92,31 @@ export default React.memo(function PlotlyScatter({
   }), []);
 
   return (
-    <Plot
-      data={data}
-      layout={layout}
-      config={config}
-      // 让 Plotly 跟随父容器尺寸
-      style={{ width: "100%", height: "100%" }}
-      useResizeHandler
-      onClick={(ev) => {
-        const p = ev.points?.[0];
-        if (!p) return;
-        const cd = p.customdata as { id: string; name: string };
-        if (cd && onPointClick) {
-          const hit = points[p.pointIndex];
-          onPointClick(hit ?? { id: cd.id, name: cd.name, x: p.x as number, y: p.y as number });
-        }
+    <div
+      ref={wrapRef}
+      style={{
+        width: "100%",
+        height: "100%",
+        minWidth: 0,         // allow shrinking inside flex/grid
+        overflow: "hidden",  // prevent content overflow when width shrinks
+        position: "relative"
       }}
-    />
+    >
+      <Plot
+        data={data}
+        layout={layout}
+        config={config}
+        style={{ width: "100%", height: "100%" }}
+        useResizeHandler
+        onClick={(ev) => {
+          const p = ev.points?.[0];
+          if (!p) return;
+          const index = p.pointIndex as number;
+          // click on selected trace returns the only point
+          const hit = sel && p.curveNumber === 1 ? sel : (bulk[index] ?? points[index]);
+          if (hit) onPointClick?.(hit);
+        }}
+      />
+    </div>
   );
 });

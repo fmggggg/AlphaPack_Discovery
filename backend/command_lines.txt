@@ -1,2 +1,27 @@
 cd AlphaPack_Discovery
 uvicorn backend.main:app --reload --host 0.0.0.0 --port 8000
+
+frontend: 
+# 1) 安装依赖（Ubuntu/WSL）
+sudo apt update
+sudo apt install -y curl ca-certificates git build-essential
+
+# 2) 安装 nvm
+curl -fsSL https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
+
+# 3) 让 nvm 生效（重开一个终端，或执行下面两行）
+export NVM_DIR="$HOME/.nvm"
+[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+
+# 4) 安装 Node.js LTS（20.x）
+nvm install --lts
+nvm use --lts
+
+# 5) 检查
+node -v
+npm -v
+
+cd ~/projects/AlphaPack/AlphaPack_Discovery/frontend
+npm install        # 或 npm ci（如果你有 package-lock.json）
+npm run dev        # 启动开发服务器
+

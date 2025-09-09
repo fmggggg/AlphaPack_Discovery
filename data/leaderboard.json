@@ -1,3 +1,67 @@
-{
-  "entries": []
-}
+[
+  {
+    "id": "sub_001",
+    "model": "CrystalGPT v1",
+    "team": "Lab A",
+    "dataset": "acnaqu",
+    "metrics": {
+      "energy_mae": 0.1284,
+      "density_mae": 0.041
+    },
+    "submitted_at": "2025-09-01T10:15:00Z",
+    "paper_url": "https://example.com/paper/crystalgptv1",
+    "code_url": "https://github.com/labA/crystalgpt-v1"
+  },
+  {
+    "id": "sub_002",
+    "model": "MolFormer-XL",
+    "team": "Team Beta",
+    "dataset": "acnaqu",
+    "metrics": {
+      "energy_mae": 0.102,
+      "density_mae": 0.052
+    },
+    "submitted_at": "2025-09-03T08:12:00Z",
+    "paper_url": "",
+    "code_url": "https://github.com/beta/molformer-xl"
+  },
+  {
+    "id": "sub_003",
+    "model": "SymmNet",
+    "team": "Group C",
+    "dataset": "t2a",
+    "metrics": {
+      "energy_mae": 0.089,
+      "density_mae": 0.048
+    },
+    "submitted_at": "2025-09-05T14:20:00Z",
+    "paper_url": "https://arxiv.org/abs/1234.5678",
+    "code_url": ""
+  },
+  {
+    "id": "sub_004",
+    "model": "Baseline-SGD",
+    "team": "Baseline",
+    "dataset": "acnaqu",
+    "metrics": {
+      "energy_mae": 0.215,
+      "density_mae": 0.071
+    },
+    "submitted_at": "2025-09-06T09:00:00Z",
+    "paper_url": "",
+    "code_url": ""
+  },
+  {
+    "id": "sub_005",
+    "model": "CrystalDiffuser",
+    "team": "Lab A",
+    "dataset": "benzene",
+    "metrics": {
+      "energy_mae": 0.133,
+      "density_mae": 0.039
+    },
+    "submitted_at": "2025-09-07T12:00:00Z",
+    "paper_url": "https://example.com/paper/crystaldiffuser",
+    "code_url": "https://github.com/labA/crystal-diffuser"
+  }
+]

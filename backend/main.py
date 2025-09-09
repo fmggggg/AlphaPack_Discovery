@@ -9,11 +9,12 @@ from collections import Counter
 from .settings import settings
 from .store import save_bytes, save_json, load_json, load_text, exists, list_dataset_meta_paths
 from .xyz_utils import parse_xyz
-from .mc_adapter import compute_density_for_item, build_mc_from_tokens, cif_text_from_mc
+from .mc_adapter import compute_density_for_item, build_mc_from_tokens, cif_text_from_mc, extract_selfies_from_tokens, selfies_to_smiles
 from .token_utils import parse_one_item
-
+from .routers import leaderboard
 
 app = FastAPI(title="OMC-Lite (Tokens) API")
+app.include_router(leaderboard.router)
 
 app.add_middleware(
     CORSMiddleware,
@@ -26,6 +27,8 @@ app.add_middleware(
 @app.get("/api/health")
 def health():
     return {"ok": True, "ts": datetime.utcnow().isoformat()+"Z"}
+
+
 
 # ---------- Upload dataset: molecule.xyz + structures.json ----------
 @app.post("/api/datasets/upload")
@@ -70,6 +73,14 @@ async def upload_dataset(
         # 简易化学式（基元分子的元素统计）
         formula = Counter(atom_types)
         meta["formula"] = "".join(f"{el}{cnt if cnt>1 else ''}" for el,cnt in formula.items())
+        # --- 新增：从 tokens 抽取 SELFIES，并转换为 SMILES ---
+        selfies_str = extract_selfies_from_tokens(obj.get("tokens"))
+        smiles_str = selfies_to_smiles(selfies_str)
+        if selfies_str:
+            meta["selfies"] = selfies_str
+        if smiles_str:
+            meta["smiles"] = smiles_str
+
         manifest.append(meta)
 
     save_json(f"datasets/{dsid}/manifest.json", manifest)

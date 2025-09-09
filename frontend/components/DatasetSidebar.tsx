@@ -70,7 +70,7 @@ function _DatasetSidebar({
   return (
     <div style={{ display: "grid", gap: 12 }}>
       <Input.Search
-        placeholder="搜索数据集…"
+        placeholder="Search landscapes…"
         allowClear
         value={q}
         onChange={e => setQ(e.target.value)}
@@ -109,7 +109,7 @@ function _DatasetSidebar({
             }}
           />
         ) : (
-          <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="无匹配数据集" />
+          <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="No matched landscape." />
         )}
       </div>
     </div>
