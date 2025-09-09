@@ -4,7 +4,6 @@ __pycache__/
 *$py.class
 
 # C extensions
-*.json
 *.so
 *.csv
 *.pt
@@ -19,6 +18,7 @@ __pycache__/
 lightning_logs/
 frontend/.next/
 frontend/node_modules/
+data/datasets/
 # Distribution / packaging
 .Python
 build/
