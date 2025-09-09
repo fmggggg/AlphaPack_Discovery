@@ -121,7 +121,38 @@ def list_datasets():
 def get_manifest(dsid: str):
     if not exists(f"datasets/{dsid}/manifest.json"):
         raise HTTPException(404, "dataset not found")
-    return load_json(f"datasets/{dsid}/manifest.json")
+    manifest = load_json(f"datasets/{dsid}/manifest.json")
+
+    # 向后兼容：补写 selfies/smiles
+    needs_save = False
+    try:
+        tokens_json = load_json(f"datasets/{dsid}/structures.json")
+    except Exception:
+        tokens_json = {}
+
+    for m in manifest:
+        has_selfies = bool(m.get("selfies"))
+        has_smiles  = bool(m.get("smiles"))
+        if has_selfies and has_smiles:
+            continue
+        item = tokens_json.get(m.get("name")) if isinstance(tokens_json, dict) else None
+        selfies_str = None
+        if item and isinstance(item, dict):
+            selfies_str = extract_selfies_from_tokens(item.get("tokens"))
+        smiles_str = selfies_to_smiles(selfies_str) if selfies_str and not has_smiles else None
+
+        if selfies_str and not has_selfies:
+            m["selfies"] = selfies_str
+            needs_save = True
+        if smiles_str and not has_smiles:
+            m["smiles"] = smiles_str
+            needs_save = True
+
+    if needs_save:
+        save_json(f"datasets/{dsid}/manifest.json", manifest)
+
+    return manifest
+
 
 # ---------- Landscape: X=density, Y=energy ----------
 @app.get("/api/datasets/{dsid}/landscape")

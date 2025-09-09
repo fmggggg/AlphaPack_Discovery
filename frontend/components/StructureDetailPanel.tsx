@@ -9,7 +9,7 @@ import { DownloadOutlined, ReloadOutlined, FullscreenOutlined, FullscreenExitOut
 import CrystalViewer, { VizMode, ColorScheme } from "@/components/CrystalViewer";
 import { api } from "@/lib/api";
 
-const { Text } = Typography;
+const { Text, Paragraph } = Typography;
 const { Panel } = Collapse;
 
 export type CrystalMeta = {
@@ -19,6 +19,8 @@ export type CrystalMeta = {
   sg?: number;
   cell?: { a: number; b: number; c: number; alpha: number; beta: number; gamma: number };
   formula?: string;
+  selfies?: string;  
+  smiles?: string;    
   extra?: Record<string, any>;
 };
 
@@ -115,26 +117,113 @@ export default function StructureDetailPanel({
     <div style={{ height: "100%", display: "flex", flexDirection: "column", minWidth: 320 }}>
       {/* Metadata */}
       <div style={{ padding: 10, borderBottom: "1px solid #f0f0f0" }}>
-        <Space size={6} style={{ marginBottom: 6 }}>
-        {meta.smiles && <Tag color="blue">{meta.smiles}</Tag>}
-        {meta.selfies && <Tag color="geekblue">{meta.selfies}</Tag>}
-        {typeof meta.sg === "number" && <Tag>SG #{meta.sg}</Tag>}
-        </Space>
-        <Descriptions size="small" column={1} colon style={{ marginBottom: 6 }}>
-          {typeof meta.energy === "number" && <Descriptions.Item label="Energy">{meta.energy}</Descriptions.Item>}
-          {typeof meta.density === "number" && <Descriptions.Item label="Density">{meta.density.toFixed(3)} g/cm³</Descriptions.Item>}
+        {/* Top row: title + SG tag */}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            marginBottom: 6,
+            gap: 8,
+          }}
+        >
+          
+        </div>
+
+        {/* SMILES / SELFIES (wrapped, copyable) */}
+        {meta.smiles && (
+          <div style={{ marginBottom: 6 }}>
+            <Text type="secondary" style={{ marginRight: 8 }}>SMILES</Text>
+            <Paragraph
+              copyable
+              style={{ margin: 0, wordBreak: "break-all", whiteSpace: "pre-wrap" }}
+              code
+            >
+              {meta.smiles}
+            </Paragraph>
+          </div>
+        )}
+        {meta.selfies && (
+          <div style={{ marginBottom: 6 }}>
+            <Text type="secondary" style={{ marginRight: 8 }}>SELFIES</Text>
+            <Paragraph
+              copyable
+              style={{ margin: 0, wordBreak: "break-all", whiteSpace: "pre-wrap" }}
+              code
+            >
+              {meta.selfies}
+            </Paragraph>
+          </div>
+        )}
+
+        {/* Energy & Density on one line */}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "baseline",
+            gap: 24,
+            flexWrap: "wrap", // 宽度不够时再换行
+            marginTop: 6,
+            marginBottom: 6,
+          }}
+        >
+          {typeof meta.energy === "number" && (
+            <div>
+              <Text type="secondary" style={{ marginRight: 6 }}>Energy</Text>
+              <Text code>{meta.energy}</Text>
+            </div>
+          )}
+          {typeof meta.density === "number" && (
+            <div>
+              <Text type="secondary" style={{ marginRight: 6 }}>Density</Text>
+              <Text code>{meta.density.toFixed(3)} g/cm³</Text>
+            </div>
+          )}
+          {typeof meta.density === "number" && (
+            <div>
+              <Text type="secondary" style={{ marginRight: 6 }}>Space group</Text>
+              <Text code>#{meta.sg}</Text>
+            </div>
+          )}
+        </div>
+        {/* Cell + Buttons in one row */}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 8,
+            marginBottom: 8,
+            flexWrap: "wrap", // small screens will wrap
+          }}
+        >
+          {/* Left: Cell info */}
           {meta.cell && (
-            <Descriptions.Item label="Cell">
+            <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
+              <Text type="secondary">Cell</Text>
               <Text code>
                 a={meta.cell.a}, b={meta.cell.b}, c={meta.cell.c}, α={meta.cell.alpha}, β={meta.cell.beta}, γ={meta.cell.gamma}
               </Text>
-            </Descriptions.Item>
+            </div>
           )}
-        </Descriptions>
-        <Space size="small">
-          <Button icon={<DownloadOutlined />} size="small" onClick={downloadCIF}>Download CIF</Button>
-          <Button size="small" onClick={() => window.open(api(`/api/crystals/${dsid}/${name}/cif`), "_blank")}>Open in New Tab</Button>
-        </Space>
+
+          {/* Right: Buttons */}
+          <div style={{ marginLeft: "auto" }}>
+            <Space size="small" wrap>
+              <Button icon={<DownloadOutlined />} size="small" onClick={downloadCIF}>
+                Download CIF
+              </Button>
+              <Button
+                size="small"
+                onClick={() =>
+                  window.open(api(`/api/crystals/${dsid}/${name}/cif`), "_blank", "noopener")
+                }
+              >
+                Open CIF
+              </Button>
+            </Space>
+          </div>
+        </div>
       </div>
 
       {/* Compact toolbar (English only) */}

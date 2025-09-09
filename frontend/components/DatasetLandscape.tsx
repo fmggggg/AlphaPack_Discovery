@@ -76,6 +76,8 @@ export default function DatasetLandscape({ dsid }: { dsid: string }) {
       sg: m.sg,
       cell: m.a ? { a: m.a, b: m.b, c: m.c, alpha: m.alpha, beta: m.beta, gamma: m.gamma } : undefined,
       formula: m.formula,
+      smiles: m.smiles,
+      selfies: m.selfies,
       extra: m,
     };
   }, [selectedName, manifest]);
