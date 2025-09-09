@@ -219,7 +219,7 @@ export default function StructureDetailPanel({
                   window.open(api(`/api/crystals/${dsid}/${name}/cif`), "_blank", "noopener")
                 }
               >
-                Open CIF
+                Open
               </Button>
             </Space>
           </div>
