@@ -19,11 +19,13 @@ export default React.memo(function PlotlyScatter({
   points,
   selectedName,
   onPointClick,
+  onReady,                 // ← 新增：图初始化完成回调
 }: {
   title?: string;
   points: ScatterPoint[];
   selectedName?: string | null;
   onPointClick?: (p: ScatterPoint) => void;
+  onReady?: () => void;     // ← 新增
 }) {
   // --- ResizeObserver: fire a window 'resize' when container size changes
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -108,6 +110,8 @@ export default React.memo(function PlotlyScatter({
         config={config}
         style={{ width: "100%", height: "100%" }}
         useResizeHandler
+        onInitialized={() => onReady?.()}  // ← 新增
+        onAfterPlot={() => onReady?.()}    // ← 新增（双保险）
         onClick={(ev) => {
           const p = ev.points?.[0];
           if (!p) return;

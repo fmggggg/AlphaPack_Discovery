@@ -15,7 +15,13 @@ const UploadDialog = dynamic(() => import("@/components/UploadDialog"), { ssr: f
 import DatasetLandscape from "@/components/DatasetLandscape";
 import LeaderboardTable from "@/components/LeaderboardTable";
 
-type DatasetMeta = { dsid: string; title: string; count: number; created_at?: string };
+type DatasetMeta = {
+    dsid: string;
+    title: string;
+    count: number;
+    created_at?: string;
+    mode?: "tokens" | "cif"; 
+  };
 const { Sider, Content } = Layout;
 const { useBreakpoint } = Grid;
 
@@ -27,13 +33,29 @@ export default function Home() {
   const [collapsed, setCollapsed] = useState(false);
   const [view, setView] = useState<"landscape" | "leaderboard">("landscape");
 
+  const sortByName = (arr: DatasetMeta[]) =>
+  [...arr].sort((a, b) => {
+    const A = (a.title || a.dsid || "");
+    const B = (b.title || b.dsid || "");
+    const cmp = A.localeCompare(B, undefined, { numeric: true, sensitivity: "base" });
+    return cmp !== 0
+      ? cmp
+      : (a.dsid || "").localeCompare(b.dsid || "", undefined, { numeric: true, sensitivity: "base" });
+  });
+
   const loadDatasets = async () => {
     try {
       const r = await fetch(api("/api/datasets"));
       if (!r.ok) throw new Error("Failed to fetch dataset list");
-      const d = await r.json();
-      setDatasets(d);
-      if (!selected && d.length) setSelected(d[0].dsid);
+      const d: DatasetMeta[] = await r.json();
+  
+      const sorted = sortByName(d);                 // ← 按名字排序
+      setDatasets(sorted);
+  
+      // 如果当前没选或选中的不在列表里，就默认选“按名字排第一”的
+      if (!selected || !sorted.some(x => x.dsid === selected)) {
+        setSelected(sorted[0]?.dsid ?? null);       // ← 默认选中第一个（按名字）
+      }
     } catch (e: any) {
       message.error(e.message || "Load failed");
     }

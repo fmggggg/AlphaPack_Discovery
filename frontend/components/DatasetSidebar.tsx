@@ -4,7 +4,21 @@ import React, { useMemo, useState } from "react";
 import { Input, List, Tag, Empty, Tooltip } from "antd";
 import { DatabaseOutlined } from "@ant-design/icons";
 
-type DatasetMeta = { dsid: string; title: string; count: number; created_at?: string };
+export type DatasetMeta = {
+  dsid: string;
+  title: string;
+  count: number;
+  created_at?: string;
+  mode?: "tokens" | "cif";
+};
+
+// 映射：mode → 颜色 / 文案
+const modeTagColor = (m?: "tokens" | "cif") =>
+  m === "cif" ? "purple" : m === "tokens" ? "geekblue" : "default";
+const modeLabel = (m?: "tokens" | "cif") => (m ? m.toUpperCase() : "N/A");
+// 折叠态图标颜色（与 Tag 色系一致）
+const modeIconColor = (m?: "tokens" | "cif") =>
+  m === "cif" ? "#722ed1" : m === "tokens" ? "#2f54eb" : "#555";
 
 function _DatasetSidebar({
   items, selected, onSelect, onReload, collapsed = false,
@@ -19,25 +33,41 @@ function _DatasetSidebar({
 
   const filtered = useMemo(() => {
     const s = q.trim().toLowerCase();
-    if (!s) return items;
-    return items.filter(x =>
-      x.title?.toLowerCase().includes(s) || x.dsid?.toLowerCase().includes(s)
-    );
+  
+    const arr = s
+      ? items.filter(x =>
+          x.title?.toLowerCase().includes(s) || x.dsid?.toLowerCase().includes(s)
+        )
+      : items.slice(); // 复制一份，避免原地排序
+  
+    // 按显示名（优先 title，其次 dsid）做自然排序（大小写不敏感，数字友好）
+    arr.sort((a, b) => {
+      const A = (a.title || a.dsid || "").toString();
+      const B = (b.title || b.dsid || "").toString();
+      const cmp = A.localeCompare(B, undefined, { numeric: true, sensitivity: "base" });
+      // 同名时再用 dsid 稳定排序
+      return cmp !== 0
+        ? cmp
+        : (a.dsid || "").localeCompare(b.dsid || "", undefined, { numeric: true, sensitivity: "base" });
+    });
+  
+    return arr;
   }, [items, q]);
+  
 
   if (collapsed) {
-    // 折叠时仅显示图标列表
+    // 折叠时仅显示图标按钮（用颜色区分模式，在 tooltip 展示详情）
     return (
       <div style={{ display: "grid", gap: 8 }}>
-        {/* 保持占位，避免布局跳动 */}
         <div style={{ height: 0 }} />
         <div style={{ overflow: "auto" }}>
           {filtered.length ? (
             <div style={{ display: "grid", gap: 8 }}>
               {filtered.map(d => {
                 const active = d.dsid === selected;
+                const tooltipText = `${d.title || d.dsid} · ${modeLabel(d.mode)} · ${d.count}`;
                 return (
-                  <Tooltip key={d.dsid} title={`${d.title || d.dsid}（${d.count}）`}>
+                  <Tooltip key={d.dsid} title={tooltipText}>
                     <button
                       onClick={() => onSelect(d.dsid)}
                       style={{
@@ -49,7 +79,7 @@ function _DatasetSidebar({
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "center",
-                        color: active ? "#1677ff" : "#555",
+                        color: active ? "#1677ff" : modeIconColor(d.mode),
                       }}
                     >
                       <DatabaseOutlined />
@@ -96,14 +126,31 @@ function _DatasetSidebar({
                 >
                   <List.Item.Meta
                     avatar={<DatabaseOutlined style={{ fontSize: 18, color: "#1677ff" }} />}
-                    title={<span style={{ fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{d.title || d.dsid}</span>}
+                    title={
+                      <span
+                        style={{
+                          fontWeight: 600,
+                          whiteSpace: "nowrap",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                        }}
+                      >
+                        {d.title || d.dsid}
+                      </span>
+                    }
                     description={
                       <span style={{ color: "#8c8c8c", fontSize: 12 }}>
                         {d.created_at ? new Date(d.created_at).toLocaleString() : ""}
                       </span>
                     }
                   />
-                  <Tag color="blue">{d.count}</Tag>
+                  {/* 右侧：mode + count */}
+                  <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
+                    <Tag color={modeTagColor(d.mode)} style={{ marginRight: 0 }}>
+                      {modeLabel(d.mode)}
+                    </Tag>
+                    <Tag color="blue" style={{ marginRight: 0 }}>{d.count}</Tag>
+                  </div>
                 </List.Item>
               );
             }}

@@ -4,6 +4,26 @@ from typing import Tuple, Dict, Any
 from .org_crystal import MolecularCrystal  
 import selfies as sf
 from pymatgen.core import Structure
+from rdkit import Chem 
+from rdkit.Chem import rdDetermineBonds
+
+def create_rdkit_mol_from_coords(cart_coords, atom_types):
+    """
+    """
+    n_atoms = len(atom_types)
+    lines = []
+    lines.append(str(n_atoms))
+    lines.append("")  # 
+    for i in range(n_atoms):
+        x, y, z = cart_coords[i]
+        lines.append(f"{atom_types[i]} {x:.6f} {y:.6f} {z:.6f}")
+    xyz_block = "\n".join(lines)
+    raw_mol = Chem.MolFromXYZBlock(xyz_block)
+    if raw_mol is None:
+        raise ValueError("create_rdkit_mol_from_coords failed.")
+    mol = Chem.Mol(raw_mol)
+    rdDetermineBonds.DetermineConnectivity(mol)
+    return mol
 
 def build_mc_from_tokens(tokens: list[str], atom_types: list[str], local_coords: np.ndarray, extra: Dict[str, Any] | None=None):
     mc = MolecularCrystal.from_tokens(tokens, properties=extra or {})
