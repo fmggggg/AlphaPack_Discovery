@@ -30,7 +30,7 @@ from typing import List, Dict, Any, Optional, Tuple
 from pathlib import PurePosixPath
 
 
-app = FastAPI(title="OMC-Lite (Tokens) API")
+app = FastAPI(title="AlphaPack API")
 app.include_router(leaderboard.router)
 
 app.add_middleware(
