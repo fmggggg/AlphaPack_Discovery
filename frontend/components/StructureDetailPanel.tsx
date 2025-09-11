@@ -162,7 +162,7 @@ export default function StructureDetailPanel({
             display: "flex",
             alignItems: "baseline",
             gap: 24,
-            flexWrap: "wrap", // 宽度不够时再换行
+            flexWrap: "wrap",
             marginTop: 6,
             marginBottom: 6,
           }}
@@ -179,7 +179,7 @@ export default function StructureDetailPanel({
               <Text code>{meta.density.toFixed(3)} g/cm³</Text>
             </div>
           )}
-          {typeof meta.density === "number" && (
+          {typeof meta.sg === "number" && (
             <div>
               <Text type="secondary" style={{ marginRight: 6 }}>Space group</Text>
               <Text code>#{meta.sg}</Text>

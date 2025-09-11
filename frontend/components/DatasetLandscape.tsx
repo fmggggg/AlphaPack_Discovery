@@ -16,6 +16,12 @@ type ManifestItem = {
   a?: number; b?: number; c?: number;
   alpha?: number; beta?: number; gamma?: number;
   formula?: string;
+  [k: string]: any;
+};
+
+type DsMeta = {
+  dsid: string;
+  title?: string;
   smiles?: string;
   selfies?: string;
   [k: string]: any;
@@ -24,9 +30,10 @@ type ManifestItem = {
 export default function DatasetLandscape({ dsid }: { dsid: string }) {
   const [pts, setPts] = useState<ScatterPoint[]>([]);
   const [manifest, setManifest] = useState<ManifestItem[]>([]);
+  const [dsMeta, setDsMeta] = useState<DsMeta | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // 选中 & 就绪闸门
+  // 就绪闸门（可选）
   const [plotReady, setPlotReady] = useState(false);
   const [selectedName, setSelectedName] = useState<string | null>(null);
   const [pendingName, setPendingName] = useState<string | null>(null);
@@ -34,18 +41,21 @@ export default function DatasetLandscape({ dsid }: { dsid: string }) {
   useEffect(() => {
     let alive = true;
     (async () => {
-      // 切换数据集：重置一切就绪状态与选择
       setLoading(true);
       setPlotReady(false);
       setSelectedName(null);
       setPendingName(null);
       try {
-        const [pr, mr] = await Promise.all([
+        const [pr, mr, metar] = await Promise.all([
           fetch(api(`/api/datasets/${dsid}/landscape`), { cache: "no-store" }),
           fetch(api(`/api/datasets/${dsid}/manifest`), { cache: "no-store" }),
+          fetch(api(`/api/datasets/${dsid}/meta`), { cache: "no-store" }),
         ]);
+
         const pointsRaw = pr.ok ? await pr.json() : [];
         const manifestRaw: ManifestItem[] = mr.ok ? await mr.json() : [];
+        const metaJson: DsMeta | null = metar.ok ? await metar.json() : null;
+
         if (!alive) return;
 
         const mapped: ScatterPoint[] = (pointsRaw || []).map((x: any) => ({
@@ -58,8 +68,9 @@ export default function DatasetLandscape({ dsid }: { dsid: string }) {
 
         setPts(mapped);
         setManifest(manifestRaw);
+        setDsMeta(metaJson);
 
-        // 预选能量最低 —— 先放到 pending，等 plotReady 再真正 setSelectedName
+        // 预选能量最低
         if (manifestRaw.length) {
           const minItem = manifestRaw.reduce<ManifestItem | null>(
             (best, cur) =>
@@ -76,12 +87,9 @@ export default function DatasetLandscape({ dsid }: { dsid: string }) {
         if (alive) setLoading(false);
       }
     })();
-    return () => {
-      alive = false;
-    };
+    return () => { alive = false; };
   }, [dsid]);
 
-  // 图就绪后再把 pending 提升为 selected（只做一次）
   useEffect(() => {
     if (!loading && plotReady && pendingName && !selectedName) {
       setSelectedName(pendingName);
@@ -101,11 +109,12 @@ export default function DatasetLandscape({ dsid }: { dsid: string }) {
         ? { a: m.a, b: m.b, c: m.c, alpha: m.alpha, beta: m.beta, gamma: m.gamma }
         : undefined,
       formula: m.formula,
-      smiles: m.smiles,
-      selfies: m.selfies,
+      // SMILES/SELFIES 来自数据集级别
+      smiles: dsMeta?.smiles,
+      selfies: dsMeta?.selfies,
       extra: m,
     };
-  }, [selectedName, manifest]);
+  }, [selectedName, manifest, dsMeta]);
 
   if (loading) {
     return (
@@ -139,16 +148,16 @@ export default function DatasetLandscape({ dsid }: { dsid: string }) {
         </div>
         <div style={{ height: "calc(100% - 44px)", padding: 8 }}>
           <PlotlyScatter
-            key={dsid} // 确保切换数据集时完全重挂载
+            key={dsid}
             points={pts}
             selectedName={selectedName}
             onPointClick={(p) => setSelectedName(p.name)}
-            onReady={() => setPlotReady(true)} // ← 新增：图初始化完成
+            onReady={() => setPlotReady(true)}
           />
         </div>
       </div>
 
-      {/* 右：详情 1/3 —— 等图就绪且有选中再显示 */}
+      {/* 右：详情 1/3 */}
       <div
         style={{
           flex: 1,

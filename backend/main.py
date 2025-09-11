@@ -343,9 +343,9 @@ async def upload_dataset(
             if warn:
                 warns.append(warn)
                 continue
-            # fill selfies/smiles 
-            if selfies_str: meta["selfies"] = selfies_str
-            if smiles:  meta["smiles"] = smiles
+            # # fill selfies/smiles 
+            # if selfies_str: meta["selfies"] = selfies_str
+            # if smiles:  meta["smiles"] = smiles
             manifest.append(meta)
 
         save_json(f"datasets/{dsid}/manifest.json", manifest)
@@ -413,8 +413,8 @@ async def upload_dataset(
             "density": density,
             "sg": meta_cd.get("sg"),
             "cell": meta_cd.get("cell"),
-            "smiles": smiles,
-            "selfies": selfies_str,
+            # "smiles": smiles,
+            # "selfies": selfies_str,
         }
         manifest.append(m)
 
@@ -464,37 +464,15 @@ def list_datasets():
 def get_manifest(dsid: str):
     if not exists(f"datasets/{dsid}/manifest.json"):
         raise HTTPException(404, "dataset not found")
-    manifest = load_json(f"datasets/{dsid}/manifest.json")
+    
+    return load_json(f"datasets/{dsid}/manifest.json")
 
-    # 向后兼容：补写 selfies/smiles
-    needs_save = False
-    try:
-        tokens_json = load_json(f"datasets/{dsid}/structures.json")
-    except Exception:
-        tokens_json = {}
-
-    for m in manifest:
-        has_selfies = bool(m.get("selfies"))
-        has_smiles  = bool(m.get("smiles"))
-        if has_selfies and has_smiles:
-            continue
-        item = tokens_json.get(m.get("name")) if isinstance(tokens_json, dict) else None
-        selfies_str = None
-        if item and isinstance(item, dict):
-            selfies_str = extract_selfies_from_tokens(item.get("tokens"))
-        smiles_str = selfies_to_smiles(selfies_str) if selfies_str and not has_smiles else None
-
-        if selfies_str and not has_selfies:
-            m["selfies"] = selfies_str
-            needs_save = True
-        if smiles_str and not has_smiles:
-            m["smiles"] = smiles_str
-            needs_save = True
-
-    if needs_save:
-        save_json(f"datasets/{dsid}/manifest.json", manifest)
-
-    return manifest
+# ---------- Meta ----------
+@app.get("/api/datasets/{dsid}/meta")
+def get_meta(dsid: str):
+    if not exists(f"datasets/{dsid}/meta.json"):
+        raise HTTPException(404, "dataset not found")
+    return load_json(f"datasets/{dsid}/meta.json")
 
 
 # ---------- Landscape: X=density, Y=energy ----------
@@ -508,20 +486,40 @@ def dataset_landscape(dsid: str):
         energy = m.get("energy", None)
         density = m.get("density", None)
         if energy is None:
-            # 没能解析出 energy 的条目直接跳过（energy 必须）
             continue
+
         if density is None:
-            # 最后一次尝试：即时计算密度并缓存回 manifest（避免重复）
+            # 兼容两种 structures 形态：tokens（旧）或 cif（新）
             try:
-                mol = load_json(f"datasets/{dsid}/molecule.json")
-                tokens_json = load_json(f"datasets/{dsid}/structures.json")
-                obj = tokens_json[m["name"]]
-                d = compute_density_for_item(obj["tokens"], mol["atom_types"], np.array(mol["local_coords"]), extra={k:v for k,v in obj.items() if k!="tokens"})
-                m["density"] = float(d)
-                save_json(f"datasets/{dsid}/manifest.json", manifest)
-                density = m["density"]
+                structures = load_json(f"datasets/{dsid}/structures.json")
+                item = structures.get(m["name"])
+                if isinstance(item, dict):
+                    if "cif" in item:
+                        # 新模式：从 CIF 计算密度
+                        d = density_from_cif(item["cif"])
+                        if d is not None and math.isfinite(d):
+                            density = float(d)
+                            m["density"] = density
+                            save_json(f"datasets/{dsid}/manifest.json", manifest)
+                    elif "tokens" in item:
+                        # 旧模式：从 tokens 计算
+                        mol = load_json(f"datasets/{dsid}/molecule.json")
+                        d = compute_density_for_item(
+                            item["tokens"],
+                            mol["atom_types"],
+                            np.array(mol["local_coords"]),
+                            extra={k: v for k, v in item.items() if k != "tokens"},
+                        )
+                        density = float(d)
+                        m["density"] = density
+                        save_json(f"datasets/{dsid}/manifest.json", manifest)
             except Exception:
-                continue
+                pass
+
+        if density is None:
+            # 仍然没有密度就跳过
+            continue
+
         pts.append({
             "id": m["name"],
             "name": m["name"],
