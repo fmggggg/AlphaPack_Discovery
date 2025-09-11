@@ -472,7 +472,47 @@ def get_manifest(dsid: str):
 def get_meta(dsid: str):
     if not exists(f"datasets/{dsid}/meta.json"):
         raise HTTPException(404, "dataset not found")
-    return load_json(f"datasets/{dsid}/meta.json")
+    meta = load_json(f"datasets/{dsid}/meta.json")
+
+    has_smiles = bool(meta.get("smiles"))
+    has_selfies = bool(meta.get("selfies"))
+    mode = meta.get("mode")
+
+    if not (has_smiles and has_selfies):
+        # 1) 先尝试从 molecule.xyz 生成
+        try:
+            molj = load_json(f"datasets/{dsid}/molecule.json")
+            smi, sfs = smiles_selfies_from_xyz(molj["atom_types"], np.array(molj["local_coords"]))
+            if sfs and not meta.get("selfies"):
+                meta["selfies"] = sfs
+                has_selfies = True
+            if smi and not meta.get("smiles"):
+                meta["smiles"] = smi
+                has_smiles = True
+        except Exception:
+            pass
+
+        # 2) tokens 模式再兜底一次：从第一条 tokens 提 SELFIES/SMILES
+        if mode == "tokens" and not (has_smiles and has_selfies):
+            try:
+                toks = load_json(f"datasets/{dsid}/structures.json")
+                if isinstance(toks, dict) and toks:
+                    first = next(iter(toks.values()))
+                    sfs = extract_selfies_from_tokens(first.get("tokens"))
+                    if sfs and not meta.get("selfies"):
+                        meta["selfies"] = sfs
+                        has_selfies = True
+                    if sfs and not meta.get("smiles"):
+                        meta["smiles"] = selfies_to_smiles(sfs) or meta.get("smiles")
+                        has_smiles = bool(meta.get("smiles"))
+            except Exception:
+                pass
+
+        # 3) 成功补齐就保存
+        if has_smiles or has_selfies:
+            save_json(f"datasets/{dsid}/meta.json", meta)
+
+    return meta
 
 
 # ---------- Landscape: X=density, Y=energy ----------
